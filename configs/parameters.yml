@@ -8,6 +8,7 @@ files:
   model_poly: "models/polynomial_regression_model.pkl"
   model_dt: "models/decision_tree_model.pkl"
   cleaned_data: "data/processed/EFD_Cleaned_dataset.csv"
+  logs: "logs"
 results:
   evaluation: "predict/evaluation.png"
 dvc:
