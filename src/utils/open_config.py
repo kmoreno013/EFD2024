@@ -33,6 +33,7 @@ def get_default_params():
     parser.add_argument('--model_poly', type=str, default=config["files"]["model_poly"], help='Path to save the first trained model')
     parser.add_argument('--model_dt', type=str, default=config["files"]["model_dt"], help='Path to save the second trained model')
     parser.add_argument('--cleaned_data', type=str, default=config["files"]["cleaned_data"], help='Path to cleaned dataset')
+    parser.add_argument('--logs', type=str, default=config["files"]["logs"], help='Path to log files')
     parser.add_argument('--evaluation_results', type=str, default=config["results"]["evaluation"], help='Path to evaluation results image')
     parser.add_argument('--gdrive_url', type=str, default=config["dvc"]["gdrive_url"], help='Google Drive URL for DVC storage')
     parser.add_argument('--gdrive_client_id', type=str, default=config["dvc"]["gdrive_client_id"], help='Google Drive client ID')
