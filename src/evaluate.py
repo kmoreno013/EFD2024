@@ -15,6 +15,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import learning_curve
 from train import Trainer
 from preprocess import DataLoader, DataCleaner, FeatureEngineer, DataMerger, DataSplitter
+from utils.logging_config import configure_logging
 
 class Evaluator:
     """
@@ -52,19 +53,19 @@ class Evaluator:
         train_metrics = self.compute_metrics(self.y_train, y_train_pred, self.X_train)
         test_metrics = self.compute_metrics(self.y_test, y_test_pred, self.X_test)
 
-        print(f"\n📊 Training Metrics ({self.model_name}):")
-        print(f"   - MAE  : {train_metrics[2]:.4f}")
-        print(f"   - MSE  : {train_metrics[0]:.4f}")
-        print(f"   - RMSE : {train_metrics[1]:.4f}")
-        print(f"   - R² Score: {train_metrics[3]:.4f}")
-        print(f"   - Adjusted R²: {train_metrics[4]:.4f}")
+        logger.info(f"📊 Training Metrics ({self.model_name}):")
+        logger.info(f"   - MAE  : {train_metrics[2]:.4f}")
+        logger.info(f"   - MSE  : {train_metrics[0]:.4f}")
+        logger.info(f"   - RMSE : {train_metrics[1]:.4f}")
+        logger.info(f"   - R² Score: {train_metrics[3]:.4f}")
+        logger.info(f"   - Adjusted R²: {train_metrics[4]:.4f}")
 
-        print(f"\n📊 Test Metrics ({self.model_name}):")
-        print(f"   - MAE  : {test_metrics[2]:.4f}")
-        print(f"   - MSE  : {test_metrics[0]:.4f}")
-        print(f"   - RMSE : {test_metrics[1]:.4f}")
-        print(f"   - R² Score: {test_metrics[3]:.4f}")
-        print(f"   - Adjusted R²: {test_metrics[4]:.4f}")
+        logger.info(f"📊 Test Metrics ({self.model_name}):")
+        logger.info(f"   - MAE  : {test_metrics[2]:.4f}")
+        logger.info(f"   - MSE  : {test_metrics[0]:.4f}")
+        logger.info(f"   - RMSE : {test_metrics[1]:.4f}")
+        logger.info(f"   - R² Score: {test_metrics[3]:.4f}")
+        logger.info(f"   - Adjusted R²: {test_metrics[4]:.4f}")
 
         if flag == "On":
             mlflow.log_param("Model", self.model_name)
@@ -124,15 +125,18 @@ class Evaluator:
 
 if __name__ == "__main__":
     try:
-        print('===================== Model Development and Evaluation Started! =====================')
         params = get_default_params()
+        loggers = configure_logging()
+        logger = loggers['evaluate']
+
+        logger.info('===================== Model Development and Evaluation Started! =====================')
         df_efd_cleaned = pd.read_csv(os.path.join(params.project_root, params.cleaned_data))
 
-        print('Performing Data Splitting Process ...')
+        logger.info('Performing Data Splitting Process ...')
         data_splitter = DataSplitter(df_efd_cleaned)
         X_train, y_train, X_test, y_test = data_splitter.split_data()
 
-        print('Performing Feature Encoding and Standardization Process ...')
+        logger.info('Performing Feature Encoding and Standardization Process ...')
         trainer = Trainer(X_train, y_train, X_test, y_test)
         X_train_transformed, X_test_transformed = trainer.preprocess_data()
 
@@ -143,21 +147,22 @@ if __name__ == "__main__":
             mlflow.sklearn.autolog(disable=True) # Manual input features due to error on training and testing df format after data transformation 
             run = mlflow.active_run()
             if run:
-                print("Active run_id: {}".format(run.info.run_id))
+                logger.info("Active run_id: {}".format(run.info.run_id))
                 mlflow.end_run()
 
             exp_name = params.mlflow_experiment_name
-            exp_url = params.mlflow_experiment_url
+            exp_url = os.environ.get('MLFLOW_TRACKING_URI', params.mlflow_experiment_url)
+            logger.info(f'Set MLFLOW tracking URI: {exp_url}')
             mlflow.set_tracking_uri(exp_url) 
             mlflow.set_experiment(exp_name)
             experiment = mlflow.get_experiment_by_name(exp_name)
 
             if experiment is None:
-                print("Experiment not found, creating a new one...")
+                logger.info("Experiment not found, creating a new one...")
                 experiment = mlflow.create_experiment(exp_name)
 
             with mlflow.start_run(experiment_id=experiment.experiment_id) as run:
-                print("Started new run with ID: {}".format(run.info.run_id))
+                logger.info("Started new run with ID: {}".format(run.info.run_id))
                 mlflow.log_params({
                     "model": params.model_type_poly,
                     "degree": params.degree,
@@ -167,13 +172,13 @@ if __name__ == "__main__":
                     "positive": params.positive
                 })
 
-                print('Performing Model Training Process ...')
+                logger.info('Performing Model Training Process ...')
                 X_train_poly, X_test_poly = trainer.train_polynomial_regression(X_train_transformed, X_test_transformed)
 
-                print('Performing Hyperparameter Tuning Process ...')
+                logger.info('Performing Hyperparameter Tuning Process ...')
                 best_model = trainer.hyperparameter_tuning_poly(X_train_poly)
 
-                print('Performing Model Evaluation Process ...')
+                logger.info('Performing Model Evaluation Process ...')
                 evaluator = Evaluator(
                     model=best_model,
                     X_train=X_train_poly,
@@ -183,37 +188,39 @@ if __name__ == "__main__":
                     model_name="Polynomial Regression"
                 )
                 evaluator.print_metrics(params.allow_ml_model_track)
-                print('Performing Model Evaluation Plot Process ...')
+                logger.info('Performing Model Evaluation Plot Process ...')
                 evaluator.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
-                print('Performing Save Config Process ...')
+                logger.info('Performing Save Config Process ...')
                 trainer.save_train_config_poly(os.path.join(params.project_root, params.train_config), params.allow_ml_model_track)
-                print('Performing Model Download Process ...')
+                logger.info('Performing Model Download Process ...')
                 trainer.save_model_poly(os.path.join(params.project_root, params.model_poly), params.allow_ml_model_track)
-                print(f'✅ Model saved: {os.path.join(params.project_root, params.model_poly)}')
+                logger.info(f'✅ Model saved: {os.path.join(params.project_root, params.model_poly)}')
 
             if params.train_second_model == 'On':
+                logger.info('Performing Second Model Training Process ...')
                 if mlflow.active_run():
                     mlflow.end_run()
 
                 mlflow.sklearn.autolog(disable=True) 
                 run = mlflow.active_run()
                 if run:
-                    print("Active run_id: {}".format(run.info.run_id))
+                    logger.info("Active run_id: {}".format(run.info.run_id))
                     mlflow.end_run()
 
                 exp_name = params.mlflow_experiment_name
-                exp_url = params.mlflow_experiment_url
+                exp_url = os.environ.get('MLFLOW_TRACKING_URI', params.mlflow_experiment_url)
+                logger.info(f'Set MLFLOW tracking URI: {exp_url}')
                 mlflow.set_tracking_uri(exp_url) 
                 mlflow.set_experiment(exp_name)
                 experiment = mlflow.get_experiment_by_name(exp_name)
 
                 if experiment is None:
-                    print("Experiment not found, creating a new one...")
+                    logger.info("Experiment not found, creating a new one...")
                     experiment = mlflow.create_experiment(exp_name)
 
                 with mlflow.start_run(experiment_id=experiment.experiment_id) as run:
-                    print("Started new run with ID: {}".format(run.info.run_id))
+                    logger.info("Started new run with ID: {}".format(run.info.run_id))
                     mlflow.log_params({
                         "model": params.model_type_dt,
                         "min_samples_leaf": params.min_samples_leaf,
@@ -222,13 +229,13 @@ if __name__ == "__main__":
                         "random_state": params.random_state
                     })
 
-                    print('Performing Second Model Training Process ...')
+                    logger.info('Performing Second Model Training Process ...')
                     trainer.train_decision_tree(X_train_transformed, X_test_transformed)
 
-                    print('Performing Hyperparameter Tuning Process ...')
+                    logger.info('Performing Hyperparameter Tuning Process ...')
                     best_model = trainer.hyperparameter_tuning_dt(X_train_transformed)
 
-                    print('Performing Model Evaluation Process ...')
+                    logger.info('Performing Model Evaluation Process ...')
                     evaluator_dt = Evaluator(
                         model=best_model,
                         X_train=X_train_transformed,
@@ -238,23 +245,23 @@ if __name__ == "__main__":
                         model_name="Decision Trees"
                     )
                     evaluator_dt.print_metrics(params.allow_ml_model_track)
-                    print('Performing Model Evaluation Plot Process ...')
+                    logger.info('Performing Model Evaluation Plot Process ...')
                     evaluator_dt.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
-                    print('Performing Save Config Process ...')
+                    logger.info('Performing Save Config Process ...')
                     trainer.save_train_config_dt(os.path.join(params.project_root, params.train_config), params.allow_ml_model_track)
-                    print('Performing Model Download Process ...')
+                    logger.info('Performing Model Download Process ...')
                     trainer.save_model_dt(os.path.join(params.project_root, params.model_dt), params.allow_ml_model_track, params.max_depth, params.min_samples_leaf, params.min_samples_split, params.random_state)
-                    print(f'✅ Second Model saved: {os.path.join(params.project_root, params.model_dt)}')
+                    logger.info(f'✅ Second Model saved: {os.path.join(params.project_root, params.model_dt)}')
         else:
-            print("MLflow tracking is disabled (allow_ml_model_track = 'Off'). Proceeding without MLflow tracking.")
-            print('Performing Model Training Process ...')
+            logger.info("MLflow tracking is disabled (allow_ml_model_track = 'Off'). Proceeding without MLflow tracking.")
+            logger.info('Performing Model Training Process ...')
             X_train_poly, X_test_poly = trainer.train_polynomial_regression(X_train_transformed, X_test_transformed)
 
-            print('Performing Hyperparameter Tuning Process ...')
+            logger.info('Performing Hyperparameter Tuning Process ...')
             best_model = trainer.hyperparameter_tuning_poly(X_train_poly)
 
-            print('Performing Model Evaluation Process ...')
+            logger.info('Performing Model Evaluation Process ...')
             evaluator = Evaluator(
                 model=best_model,
                 X_train=X_train_poly,
@@ -264,23 +271,23 @@ if __name__ == "__main__":
                 model_name="Polynomial Regression"
             )
             evaluator.print_metrics(params.allow_ml_model_track)
-            print('Performing Model Evaluation Plot Process ...')
+            logger.info('Performing Model Evaluation Plot Process ...')
             evaluator.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
-            print('Performing Save Config Process ...')
+            logger.info('Performing Save Config Process ...')
             trainer.save_train_config_poly(os.path.join(params.project_root, params.train_config), params.allow_ml_model_track)
-            print('Performing Model Download Process ...')
+            logger.info('Performing Model Download Process ...')
             trainer.save_model_poly(os.path.join(params.project_root, params.model_poly), params.allow_ml_model_track)
-            print(f'✅ Model saved: {os.path.join(params.project_root, params.model_poly)}')
+            logger.info(f'✅ Model saved: {os.path.join(params.project_root, params.model_poly)}')
 
             if params.train_second_model == 'On':
-                print('Performing Second Model Training Process ...')
+                logger.info('Performing Second Model Training Process ...')
                 trainer.train_decision_tree(X_train_transformed, X_test_transformed)
 
-                print('Performing Hyperparameter Tuning Process ...')
+                logger.info('Performing Hyperparameter Tuning Process ...')
                 best_model = trainer.hyperparameter_tuning_dt(X_train_transformed)
 
-                print('Performing Model Evaluation Process ...')
+                logger.info('Performing Model Evaluation Process ...')
                 evaluator_dt = Evaluator(
                     model=best_model,
                     X_train=X_train_transformed,
@@ -290,15 +297,15 @@ if __name__ == "__main__":
                     model_name="Decision Trees"
                 )
                 evaluator_dt.print_metrics(params.allow_ml_model_track)
-                print('Performing Model Evaluation Plot Process ...')
+                logger.info('Performing Model Evaluation Plot Process ...')
                 evaluator_dt.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
-                print('Performing Save Config Process ...')
+                logger.info('Performing Save Config Process ...')
                 trainer.save_train_config_dt(os.path.join(params.project_root, params.train_config), params.allow_ml_model_track)
-                print('Performing Model Download Process ...')
+                logger.info('Performing Model Download Process ...')
                 trainer.save_model_dt(os.path.join(params.project_root, params.model_dt), params.allow_ml_model_track, params.max_depth, params.min_samples_leaf, params.min_samples_split, params.random_state)
-                print(f'✅ Second Model saved: {os.path.join(params.project_root, params.model_dt)}')
+                logger.info(f'✅ Second Model saved: {os.path.join(params.project_root, params.model_dt)}')
 
-        print('===================== Model Development and Evaluation completed! =====================')
+        logger.info('===================== Model Development and Evaluation completed! =====================')
     except Exception as e:
-        print(f"An error occurred during model Development and evaluation: {e}")
+        logger.info(f"An error occurred during model Development and evaluation: {e}")
