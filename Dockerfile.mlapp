@@ -1,0 +1,32 @@
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory in the container
+WORKDIR /ml_app
+
+# Install system packages, including Git, and dependencies
+RUN apt-get update && apt-get install -y git
+
+# Copy the requirements file for your application
+COPY requirements_docker.txt .
+
+# Install dependencies (ensure requirements.txt is installed before adding additional ones)
+RUN pip install --no-cache-dir -r requirements_docker.txt \
+    && pip install --no-cache-dir mlflow==2.20.2 scikit-learn==1.6.1
+
+# Copy the application files to the container
+COPY . .
+
+# Create the necessary directories for logs and models
+RUN mkdir -p /ml_app/logs
+
+# Set environment variables for your Flask app and logs
+ENV PYTHONPATH=/ml_app
+ENV FLASK_APP=predict_api.py
+ENV LOG_DIR=/ml_app/logs
+
+# Expose the port for your Flask app
+EXPOSE 6060
+
+# Command to run your prediction API and related scripts
+CMD ["bash", "-c", "python src/train.py && python src/evaluate.py && python src/predict.py && python predict_api.py"]
