@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import yaml
 from utils.open_config import get_default_params
+from utils.logging_config import configure_logging
 
 class ModelPredictor:
     """
@@ -44,8 +45,11 @@ class ModelPredictor:
 
 if __name__ == "__main__":
     try:
-        print('===================== Model Prediction Started! =====================')
         params = get_default_params()
+        loggers = configure_logging()
+        logger = loggers['predict']
+
+        logger.info('===================== Model Prediction Started! =====================')
         predictor = ModelPredictor(os.path.join(params.project_root, params.model_poly))
 
         ward = "Beaumont Ward"
@@ -57,7 +61,20 @@ if __name__ == "__main__":
         bags_per_door = 3
 
         prediction = predictor.predict_donations(ward, time_spent, num_doors, num_routes, year, total_volunteers, bags_per_door)
-        print(f"🛍️ Predicted Number of Donation Bags: {prediction}") 
-        print('===================== Model Prediction Finished! =====================')
+        logger.info(f"🛍️ Predicted Number of Donation Bags using Polynomial Regression: {prediction}") 
+
+        predictor = ModelPredictor(os.path.join(params.project_root, params.model_dt))
+
+        ward = "Beaumont Ward"
+        time_spent = 5.0
+        num_doors = 100
+        num_routes = 10
+        year = 2024
+        total_volunteers = 50
+        bags_per_door = 3
+
+        prediction = predictor.predict_donations(ward, time_spent, num_doors, num_routes, year, total_volunteers, bags_per_door)
+        logger.info(f"🛍️ Predicted Number of Donation Bags using Decision Trees: {prediction}") 
+        logger.info('===================== Model Prediction Finished! =====================')
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.info(f"An error occurred: {e}")
