@@ -151,7 +151,7 @@ pip install pandas pyyaml Flask
   * **bags_per_door:** The average number of donation bags per door.
 
 ## Example Request
-* Home Endpoint: `GET http://127.0.0.1:9000/efd2024_home`
-* Health Status: `GET http://127.0.0.1:9000/health_status`
-* Prediction (Polynomial Regression): `POST http://127.0.0.1:9000/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
-* Prediction (Decision Tree): `POST http://127.0.0.1:9000/v2/predict -H "Content-Type: application/json" -d @configs/request.json`
+* Home Endpoint: `GET http://127.0.0.1:6060/efd2024_home`
+* Health Status: `GET http://127.0.0.1:6060/health_status`
+* Prediction (Polynomial Regression): `POST http://127.0.0.1:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
+* Prediction (Decision Tree): `POST http://127.0.0.1:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
