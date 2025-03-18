@@ -1,0 +1,39 @@
+version: '3'
+
+services:
+  ml-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlapp
+    ports:
+      - "6060:6060"
+    volumes:
+      - ./models:/ml-app/models
+      - ./data:/ml-app/data
+      - ./predictions:/ml-app/predictions
+      - ./logs:/ml-app/logs
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000/
+    depends_on:
+      - mlflow
+    networks:
+      - efd-network
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow-data:/mlflow
+    networks:
+      - efd-network
+
+networks:
+  efd-network:
+    driver: bridge
+
+volumes:
+  mlflow-data:
+    driver: local
