@@ -17,6 +17,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import GridSearchCV
 from preprocess import DataLoader, DataCleaner, FeatureEngineer, DataMerger, DataSplitter
+from utils.logging_config import configure_logging
 
 class Trainer:
     """
@@ -251,38 +252,42 @@ class Trainer:
                 mlflow.sklearn.log_model(dt_pipeline, "decision_tree_model", input_example=input_data)
                 mlflow.log_artifact(model_path)
         except Exception as e:
-            print(f"An error occurred: {str(e)}")
+            logger.info(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     try:
-        print('===================== Data Preparation Started! =====================')
         params = get_default_params()
+        loggers = configure_logging()
+        logger = loggers['train']
 
-        print('Performing Data Loading Process ...')
+        logger.info('===================== Data Preparation Started! =====================')
+        logger.info('Performing Data Loading Process ...')
+
         data_loader = DataLoader(params)
         df_efd_2023, df_efd_2024, df_edm_geo = data_loader.load_data()
 
-        print(f"Shape of 2023 Data: {df_efd_2023.shape}")
-        print(f"Shape of 2024 Data: {df_efd_2024.shape}")
-        print(f"Shape of Edmonton Geo Data: {df_edm_geo.shape}")
+        logger.info(f"Shape of 2023 Data: {df_efd_2023.shape}")
+        logger.info(f"Shape of 2024 Data: {df_efd_2024.shape}")
+        logger.info(f"Shape of Edmonton Geo Data: {df_edm_geo.shape}")
 
-        print('Performing Data Cleaning Process ...')
+        logger.info('Performing Data Cleaning Process ...')
+
         data_cleaner = DataCleaner(df_efd_2023, df_efd_2024)
         df_efd_2024_cleaned = data_cleaner.clean_2024_data()
         df_efd_2024_cleaned = data_cleaner.apply_concatenation(df_efd_2024_cleaned)
         df_efd_2024_cleaned = data_cleaner.rename_columns_2024(df_efd_2024_cleaned)
         df_efd_2023_cleaned = data_cleaner.clean_2023_data()
 
-        print('Performing Data Merging Process ...')
+        logger.info('Performing Data Merging Process ...')
         data_merger = DataMerger(df_efd_2024_cleaned, df_efd_2023_cleaned, df_edm_geo)
         df_efd_cleaned = data_merger.merge_cleaned_data()
 
-        print('Performing Feature Engineering Process ...')
+        logger.info('Performing Feature Engineering Process ...')
         feature_engineer = FeatureEngineer(df_efd_cleaned)
         df_efd_cleaned = feature_engineer.feature_engineering()
 
-        print('Performing Export of Cleaned Dataset Process ...')
+        logger.info('Performing Export of Cleaned Dataset Process ...')
         data_loader.store_data(df_efd_cleaned, os.path.join(params.project_root, params.cleaned_data))
-        print('===================== Data Preparation Completed! =====================')
+        logger.info('===================== Data Preparation Completed! =====================')
     except Exception as e:
-        print(f"An error occurred during data preparation: {e}") 
+        logger.info(f"An error occurred during data preparation: {e}") 
