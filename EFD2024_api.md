@@ -10,7 +10,7 @@ The **Edmonton Food Drive API** is designed to provide predictions for the numbe
 - **Author**: Kendrick Moreno, Roe Alincastre, Catrina Llamas
 
 ## Base URL
-http://127.0.0.1:9000
+http://0.0.0.0:6060
 
 
 ## Endpoints
