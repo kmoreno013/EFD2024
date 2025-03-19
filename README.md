@@ -39,27 +39,37 @@ The current food donation management system in Edmonton faces challenges in coor
 ## Docker Information: How to Run the App
 
 To run the Edmonton Food Drive API using Docker, follow the instructions below:
-1. Prerequisites: Ensure you have Docker installed on your machine.
+1. Pull the Docker Images
+First, pull the required images from Docker Hub:
+```
+docker pull kmoreno013/efd_2024:ml-app
+docker pull kmoreno013/efd_2024:mlflow
+```
+2. Run the mlflow Container (Model Tracking & Experiment Management)
+Start the mlflow container for model tracking and experiment management:
+```
+docker run -d --name efd_mlflow -p 5000:5000 kmoreno013/efd_2024:mlflow
+```
 
-2. Clone the Repository: If you haven't cloned the project yet, do so by running:
+3. Run the ml_app Container (Donation Bag Predictions)
+Start the ml_app container, which handles donation bag predictions and provides an API:
 ```
-git clone https://github.com/kmoreno013/EFD2024.git
-cd EFD_2024
-```
-
-3. Build the Docker Container: In the root directory of the project (where the Dockerfile is located), run the following command to build the Docker Container:
-```
-docker compose up -d
+docker run -d --name efd_ml_app kmoreno013/efd_2024:ml-app
 ```
 
-4. Access the Application: Once the container is running, you can access the API through the following commands:
-* Home Endpoint: `GET http://127.0.0.1:6060/efd2024_home`
-* Health Status: `GET http://127.0.0.1:6060/health_status`
-* Prediction (Polynomial Regression): `POST http://127.0.0.1:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
-* Prediction (Decision Tree): `POST http://127.0.0.1:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
-
-5. Shutting Down the Container: When you're done testing, you can stop the container by running:
+4. Verify the Containers are Running
+To check that both containers are running, use the following command:
 ```
-docker stop <container_id>
 docker ps
 ```
+5. Access the MLflow Web UI
+You can access the MLflow server by opening your browser and navigating to:
+```
+http://localhost:5000
+```
+
+6. Access the Application: Once the container is running, you can access the API through the following commands:
+* Home Endpoint: `GET http://localhost:6060/efd2024_home`
+* Health Status: `GET http://localhost:6060/health_status`
+* Prediction (Polynomial Regression): `POST http://localhost:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
+* Prediction (Decision Tree): `POST http://localhost:6060/v1/predict -H "Content-Type: application/json" -d @configs/request.json`
