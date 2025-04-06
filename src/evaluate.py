@@ -16,6 +16,7 @@ from sklearn.model_selection import learning_curve
 from train import Trainer
 from preprocess import DataLoader, DataCleaner, FeatureEngineer, DataMerger, DataSplitter
 from utils.logging_config import configure_logging
+from utils.monitoring import get_training_monitor
 
 class Evaluator:
     """
@@ -43,7 +44,7 @@ class Evaluator:
         adjusted_r2 = 1 - (1 - r2) * (len(y_true) - 1) / (len(y_true) - X.shape[1] - 1)
         return mse, rmse, mae, r2, adjusted_r2
 
-    def print_metrics(self, flag):
+    def print_metrics(self, flag, model_version):
         """
         Prints the evaluation metrics (MAE, MSE, RMSE, R², Adjusted R²) for both training and test sets.
         """
@@ -81,6 +82,9 @@ class Evaluator:
             mlflow.log_metric("Test R²", test_metrics[3])
             mlflow.log_metric("Test Adjusted R²", test_metrics[4])
 
+        monitor.record_metrics(model=model_version, type='train', mse=train_metrics[0], rmse=train_metrics[1], mae=train_metrics[2], r_squared=train_metrics[3], adj_r_squared=train_metrics[4]) 
+        monitor.record_metrics(model=model_version, type='test', mse=test_metrics[0], rmse=test_metrics[1], mae=test_metrics[2], r_squared=test_metrics[3], adj_r_squared=test_metrics[4]) 
+            
     def plot_evaluation(self, path, flag):
         """
         Plots several evaluation graphs, including:
@@ -129,6 +133,11 @@ if __name__ == "__main__":
         loggers = configure_logging()
         logger = loggers['evaluate']
 
+        monitor = get_training_monitor(port=8002)
+        if monitor.start():
+            logger.info("Monitoring started successfully")
+        logger.info("Training metrics available at http://localhost:8002/metrics")
+
         logger.info('===================== Model Development and Evaluation Started! =====================')
         df_efd_cleaned = pd.read_csv(os.path.join(params.project_root, params.cleaned_data))
 
@@ -140,6 +149,7 @@ if __name__ == "__main__":
         trainer = Trainer(X_train, y_train, X_test, y_test)
         X_train_transformed, X_test_transformed = trainer.preprocess_data()
 
+        logger.info('Initiating MLflow Process ...')
         if params.allow_ml_model_track == "On":
             if mlflow.active_run():
                 mlflow.end_run()
@@ -151,6 +161,7 @@ if __name__ == "__main__":
                 mlflow.end_run()
 
             exp_name = params.mlflow_experiment_name
+            logger.info(f'Set MLFLOW Experiment Name: {exp_name}')
             exp_url = os.environ.get('MLFLOW_TRACKING_URI', params.mlflow_experiment_url)
             logger.info(f'Set MLFLOW tracking URI: {exp_url}')
             mlflow.set_tracking_uri(exp_url) 
@@ -187,7 +198,7 @@ if __name__ == "__main__":
                     y_test=y_test,
                     model_name="Polynomial Regression"
                 )
-                evaluator.print_metrics(params.allow_ml_model_track)
+                evaluator.print_metrics(params.allow_ml_model_track, 'pr')
                 logger.info('Performing Model Evaluation Plot Process ...')
                 evaluator.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
@@ -244,7 +255,7 @@ if __name__ == "__main__":
                         y_test=y_test,
                         model_name="Decision Trees"
                     )
-                    evaluator_dt.print_metrics(params.allow_ml_model_track)
+                    evaluator_dt.print_metrics(params.allow_ml_model_track, "dt")
                     logger.info('Performing Model Evaluation Plot Process ...')
                     evaluator_dt.plot_evaluation(os.path.join(params.project_root, params.evaluation_results), params.allow_ml_model_track)
 
