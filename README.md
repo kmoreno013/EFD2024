@@ -42,31 +42,54 @@ To run the Edmonton Food Drive API using Docker, follow the instructions below:
 1. Pull the Docker Images
 First, pull the required images from Docker Hub:
 ```
-docker pull kmoreno013/efd_2024:ml-app
-docker pull kmoreno013/efd_2024:mlflow
-```
-2. Run the mlflow Container (Model Tracking & Experiment Management)
-Start the mlflow container for model tracking and experiment management:
-```
-docker run -d --name efd_mlflow -p 5000:5000 kmoreno013/efd_2024:mlflow
+docker pull kmoreno013/efd_2024:ml-app-final
+docker pull kmoreno013/efd_2024:mlflow-final
+docker pull kmoreno013/efd_2024:grafana-final
+docker pull kmoreno013/efd_2024:prometheus-final
 ```
 
-3. Run the ml_app Container (Donation Bag Predictions)
+2. Run the ml_app Container (Donation Bag Predictions)
 Start the ml_app container, which handles donation bag predictions and provides an API:
 ```
-docker run -d --name efd_ml_app kmoreno013/efd_2024:ml-app
+docker run -d --name efd_ml_app -p 6060:6060 kmoreno013/efd_2024:ml-app-final
 ```
+
+3. Run the run_with_metric.sh Script to Monitor Training
+To track your model training metrics, use the run_with_metric.sh script. This will send training metrics to Prometheus for monitoring in Grafana:
+```
+./run_with_metric.sh
+```
+Ensure that this script is executed in the correct directory where it can access the necessary resources and configuration files for model training.
 
 4. Verify the Containers are Running
 To check that both containers are running, use the following command:
 ```
 docker ps
 ```
-5. Access the MLflow Web UI
+5. Access the MLflow Web UI, Prometheus and Grafana Dashboards
 You can access the MLflow server by opening your browser and navigating to:
 ```
 http://localhost:5000
 ```
+
+To access Prometheus, open your browser and go to:
+```
+http://localhost:9090
+```
+
+To access Grafana, open your browser and go to:
+```
+http://localhost:3000
+```
+Default Login for Grafana:
+* Username: admin
+* Password: password
+
+Accessing the Dashboards in Grafana:
+EFD API Dashboard: This dashboard displays key metrics about the API usage and performance, including prediction times and HTTP request statistics.
+Once in Grafana, navigate to the EFD API Dashboard.
+EFD Training Metrics Dashboard: This dashboard tracks the training progress of the machine learning models, including metrics like MSE, RMSE, MAE, and R2 for both Polynomial Regression and Decision Trees.
+
 
 6. Access the Application: Once the container is running, you can access the API through the following commands:
 * Home Endpoint: `GET http://localhost:6060/efd2024_home`
