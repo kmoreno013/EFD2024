@@ -13,7 +13,7 @@ services:
       - ./predictions:/ml-app/predictions
       - ./logs:/ml-app/logs
     environment:
-      - MLFLOW_TRACKING_URI=http://mlflow:5000/
+      - MLFLOW_TRACKING_URI=http://mlflow:5050/
     depends_on:
       - mlflow
     networks:
@@ -24,11 +24,48 @@ services:
       context: .
       dockerfile: Dockerfile.mlflow
     ports:
-      - "5000:5000"
+      - "5050:5050"
     volumes:
       - ./mlflow-data:/mlflow
     networks:
       - efd-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - ./prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - efd-network
+    depends_on:
+      - ml-app
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=password
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    networks:
+      - efd-network
+    depends_on:
+      - prometheus
 
 networks:
   efd-network:
@@ -36,4 +73,8 @@ networks:
 
 volumes:
   mlflow-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
     driver: local
